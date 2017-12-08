@@ -1,0 +1,45 @@
+# Run these commands on one node only...
+
+pcs cluster auth node1 node2 -u hacluster -p redhat
+pcs cluster setup --name mycluster node1 node2
+pcs cluster start --all
+pcs cluster enable --all
+
+pcs property set stonith-enabled=false
+
+pcs cluster cib drbd_cfg
+pcs -f drbd_cfg resource create DrbdData ocf:linbit:drbd drbd_resource=testdata1 op monitor interval=60s
+pcs -f drbd_cfg resource master DrbdDataClone DrbdData master-max=1 master-node-max=1 clone-max=2 clone-node-max=1 notify=true
+pcs cluster cib-push drbd_cfg
+
+drbdadm attach testdata1
+drbdadm primary testdata1 --force
+mkfs.ext3 /dev/drbd0
+mount /dev/drbd0 /mnt
+mkdir /mnt/mysql
+chown -R mysql:mysql /mnt/mysql
+mysqld --initialize-insecure --user=mysql
+
+pcs resource create VirtIP ocf:heartbeat:IPaddr2 ip="172.16.2.41" cidr_netmask=32 nic="eth1:1" op monitor interval=30s
+pcs resource create MySQL systemd:mysqld op monitor interval=10s
+pcs constraint colocation add MySQL with VirtIP INFINITY
+pcs constraint order VirtIP then MySQL
+
+
+pcs cluster cib fs_cfg
+pcs -f fs_cfg resource create DrbdFS Filesystem device="/dev/drbd0" directory="/mnt" fstype="ext3"
+pcs -f fs_cfg constraint colocation add DrbdFS with DrbdDataClone INFINITY with-rsc-role=Master
+pcs -f fs_cfg constraint order promote DrbdDataClone then start DrbdFS
+pcs -f fs_cfg constraint colocation add MySQL with DrbdFS INFINITY
+pcs -f fs_cfg constraint order DrbdFS then MySQL
+pcs cluster cib-push fs_cfg
+
+
+mysql --execute="CREATE USER 'root'@'172.16.2.0/255.255.255.0';"
+mysql --execute="GRANT ALL PRIVILEGES ON *.* TO 'root'@'172.16.2.0/255.255.255.0' WITH GRANT OPTION;"
+mysql --execute="GRANT PROXY ON ''@'' TO 'root'@'172.16.2.0/255.255.255.0' WITH GRANT OPTION;"
+
+# on the other node run this
+drbdadm attach testdata1
+
+drbd-overview (make sure it gets synced up)
