@@ -9,8 +9,8 @@ VAGRANT_ROOT = File.dirname(File.expand_path(__FILE__))
 Vagrant.configure("2") do |config|
 
   (1..2).each do |i|
-    config.vm.define "node-#{i}" do |node|
-      file_to_disk =  File.join(VAGRANT_ROOT, "./node-#{i}.vdi")
+    config.vm.define "node#{i}" do |node|
+      file_to_disk =  File.join(VAGRANT_ROOT, "./node#{i}.vdi")
 
       node.vm.box = "centos/7"
       node.vm.hostname = "node#{i}"
@@ -73,8 +73,8 @@ Vagrant.configure("2") do |config|
     end
   end
 
-  config.vm.define "node-3" do |node|
-    file_to_disk =  File.join(VAGRANT_ROOT, "./node-3.vdi")
+  config.vm.define "node3" do |node|
+    file_to_disk =  File.join(VAGRANT_ROOT, "./node3.vdi")
 
     node.vm.box = "centos/7"
     node.vm.hostname = "node3"
