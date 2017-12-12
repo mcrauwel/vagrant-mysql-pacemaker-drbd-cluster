@@ -60,6 +60,7 @@ Vagrant.configure("2") do |config|
 
         yum install -y mysql-community-server
 
+        sed -i s/SELINUX=enforcing/SELINUX=permissive/g /etc/selinux/config
         semanage permissive -a drbd_t
         setenforce 0
 
@@ -111,6 +112,9 @@ Vagrant.configure("2") do |config|
       systemctl enable corosync.service
       systemctl enable pacemaker.service
 
+      sed -i s/SELINUX=enforcing/SELINUX=disabled/g /etc/selinux/config
+      semanage permissive -a drbd_t
+      setenforce 0
     SHELL
 
 
