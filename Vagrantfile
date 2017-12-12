@@ -41,8 +41,8 @@ Vagrant.configure("2") do |config|
 
         cp /vagrant/testdata1.res /etc/drbd.d/
         drbdadm create-md testdata1
-        drdbadm up testdata1
-        drdbadm attach testdata1
+        drbdadm up testdata1
+        drbdadm attach testdata1
 
         systemctl start drbd
         systemctl enable drbd
