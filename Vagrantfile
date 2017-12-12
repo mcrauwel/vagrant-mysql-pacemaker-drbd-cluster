@@ -101,10 +101,6 @@ Vagrant.configure("2") do |config|
 
       yum install -y pacemaker pcs fence-agents-all psmisc policycoreutils-python
 
-      systemctl start firewalld.service
-      firewall-cmd --permanent --add-service=high-availability
-      firewall-cmd --reload
-
       echo "redhat" | passwd --stdin hacluster
       systemctl start pcsd
       systemctl enable pcsd
