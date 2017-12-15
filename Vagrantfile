@@ -75,19 +75,12 @@ Vagrant.configure("2") do |config|
   end
 
   config.vm.define "node3" do |node|
-    file_to_disk =  File.join(VAGRANT_ROOT, "./node3.vdi")
-
     node.vm.box = "centos/7"
     node.vm.hostname = "node3"
     node.vm.network "private_network", ip: "172.16.2.63"
 
     node.vm.provider "virtualbox" do |vb|
       vb.memory = "1024"
-
-      unless File.exist?(file_to_disk)
-        vb.customize ['createhd', '--filename', file_to_disk, '--size', 20 * 1024]
-      end
-      vb.customize ['storageattach', :id, '--storagectl', 'IDE', '--port', 1, '--device', 0, '--type', 'hdd', '--medium', file_to_disk]
     end
 
     node.vm.provision "shell", inline: <<-SHELL
@@ -97,6 +90,7 @@ Vagrant.configure("2") do |config|
 172.16.2.61 node1
 172.16.2.62 node2
 172.16.2.63 node3
+172.16.2.41 virtip
       " > /etc/hosts
 
       sed -i s/SELINUX=enforcing/SELINUX=disabled/g /etc/selinux/config
