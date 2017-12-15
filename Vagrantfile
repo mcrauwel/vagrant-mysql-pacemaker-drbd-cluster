@@ -36,13 +36,19 @@ Vagrant.configure("2") do |config|
 172.16.2.61 node1
 172.16.2.62 node2
 172.16.2.63 node3
-172.16.2.41 virtip
+172.16.2.41 virtip1
+172.16.2.42 virtip2
         " > /etc/hosts
 
         cp /vagrant/testdata1.res /etc/drbd.d/
         drbdadm create-md testdata1
         drbdadm up testdata1
         drbdadm attach testdata1
+
+        cp /vagrant/testdata2.res /etc/drbd.d/
+        drbdadm create-md testdata2
+        drbdadm up testdata2
+        drbdadm attach testdata2
 
         systemctl start drbd
         systemctl enable drbd
@@ -65,10 +71,9 @@ Vagrant.configure("2") do |config|
         setenforce 0
 
         rm -rf /var/lib/mysql
-        ln -s /mnt/mysql /var/lib/mysql
 
-        echo "symbolic-links = 1" >> /etc/my.cnf
-        echo "skip-name-resolve" >> /etc/my.cnf
+        cp /vagrant/my.cnf /etc/my.cnf
+
       SHELL
 
     end
@@ -97,6 +102,8 @@ Vagrant.configure("2") do |config|
 172.16.2.61 node1
 172.16.2.62 node2
 172.16.2.63 node3
+172.16.2.41 virtip1
+172.16.2.42 virtip2
       " > /etc/hosts
 
       yum install -y pacemaker pcs fence-agents-all psmisc policycoreutils-python

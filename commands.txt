@@ -7,39 +7,74 @@ pcs cluster enable --all
 
 pcs property set stonith-enabled=false
 
-pcs cluster cib drbd_cfg
-pcs -f drbd_cfg resource create DrbdData ocf:linbit:drbd drbd_resource=testdata1 op monitor interval=60s
-pcs -f drbd_cfg resource master DrbdDataClone DrbdData master-max=1 master-node-max=1 clone-max=2 clone-node-max=1 notify=true
-pcs cluster cib-push drbd_cfg
+pcs cluster cib drbd1_cfg
+pcs -f drbd1_cfg resource create DrbdData1 ocf:linbit:drbd drbd_resource=testdata1 op monitor interval=60s
+pcs -f drbd1_cfg resource master DrbdDataClone1 DrbdData1 master-max=1 master-node-max=1 clone-max=2 clone-node-max=1 notify=true
+pcs cluster cib-push drbd1_cfg
+
+pcs cluster cib drbd2_cfg
+pcs -f drbd2_cfg resource create DrbdData2 ocf:linbit:drbd drbd_resource=testdata2 op monitor interval=60s
+pcs -f drbd2_cfg resource master DrbdDataClone2 DrbdData2 master-max=1 master-node-max=1 clone-max=2 clone-node-max=1 notify=true
+pcs cluster cib-push drbd2_cfg
 
 drbdadm attach testdata1
 drbdadm primary testdata1 --force
 mkfs.ext3 /dev/drbd0
-mount /dev/drbd0 /mnt
-mkdir /mnt/mysql
-chown -R mysql:mysql /mnt/mysql
-mysqld --initialize-insecure --user=mysql
+mkdir -p /data/instance1
+mount /dev/drbd0 /data/instance1
+mkdir /data/instance1/mysql
+chown -R mysql:mysql /data/instance1/mysql
+mysqld --initialize-insecure --datadir=/data/instance1/mysql --user=mysql
 
-pcs resource create VirtIP ocf:heartbeat:IPaddr2 ip="172.16.2.41" cidr_netmask=32 nic="eth1:1" op monitor interval=30s
-pcs resource create MySQL systemd:mysqld op monitor interval=10s
-pcs constraint colocation add MySQL with VirtIP INFINITY
-pcs constraint order VirtIP then MySQL
-
-
-pcs cluster cib fs_cfg
-pcs -f fs_cfg resource create DrbdFS Filesystem device="/dev/drbd0" directory="/mnt" fstype="ext3"
-pcs -f fs_cfg constraint colocation add DrbdFS with DrbdDataClone INFINITY with-rsc-role=Master
-pcs -f fs_cfg constraint order promote DrbdDataClone then start DrbdFS
-pcs -f fs_cfg constraint colocation add MySQL with DrbdFS INFINITY
-pcs -f fs_cfg constraint order DrbdFS then MySQL
-pcs cluster cib-push fs_cfg
+drbdadm attach testdata2
+drbdadm primary testdata2 --force
+mkfs.ext3 /dev/drbd1
+mkdir -p /data/instance2
+mount /dev/drbd1 /data/instance2
+mkdir /data/instance2/mysql
+chown -R mysql:mysql /data/instance2/mysql
+mysqld --initialize-insecure --datadir=/data/instance2/mysql --user=mysql
 
 
-mysql --execute="CREATE USER 'root'@'172.16.2.0/255.255.255.0';"
-mysql --execute="GRANT ALL PRIVILEGES ON *.* TO 'root'@'172.16.2.0/255.255.255.0' WITH GRANT OPTION;"
-mysql --execute="GRANT PROXY ON ''@'' TO 'root'@'172.16.2.0/255.255.255.0' WITH GRANT OPTION;"
+pcs cluster cib instance1_cfg
+pcs -f instance1_cfg resource create DrbdFS1 Filesystem device="/dev/drbd0" directory="/data/instance1" fstype="ext3"
+pcs -f instance1_cfg resource create VirtIP1 ocf:heartbeat:IPaddr2 ip="172.16.2.41" cidr_netmask=32 nic="eth1:1" op monitor interval=30s
+pcs -f instance1_cfg resource create MySQL1 systemd:mysqld@instance1 op monitor interval=10s
+pcs -f instance1_cfg constraint colocation add DrbdFS1 with DrbdDataClone1 INFINITY with-rsc-role=Master
+pcs -f instance1_cfg constraint order promote DrbdDataClone1 then start DrbdFS1
+pcs -f instance1_cfg constraint colocation add MySQL1 with DrbdFS1 INFINITY
+pcs -f instance1_cfg constraint colocation add VirtIP1 with DrbdFS1 INFINITY
+pcs -f instance1_cfg constraint colocation add MySQL1 with VirtIP1 INFINITY
+pcs -f instance1_cfg constraint order VirtIP1 then DrbdFS1
+pcs -f instance1_cfg constraint order DrbdFS1 then MySQL1
+pcs -f instance1_cfg constraint order VirtIP1 then MySQL1
+pcs cluster cib-push instance1_cfg
+
+pcs cluster cib instance2_cfg
+pcs -f instance2_cfg resource create DrbdFS2 Filesystem device="/dev/drbd1" directory="/data/instance2" fstype="ext3"
+pcs -f instance2_cfg resource create VirtIP2 ocf:heartbeat:IPaddr2 ip="172.16.2.42" cidr_netmask=32 nic="eth1:2" op monitor interval=30s
+pcs -f instance2_cfg resource create MySQL2 systemd:mysqld@instance2 op monitor interval=10s
+pcs -f instance2_cfg constraint colocation add DrbdFS2 with DrbdDataClone2 INFINITY with-rsc-role=Master
+pcs -f instance2_cfg constraint order promote DrbdDataClone2 then start DrbdFS2
+pcs -f instance2_cfg constraint colocation add MySQL2 with DrbdFS2 INFINITY
+pcs -f instance2_cfg constraint colocation add VirtIP2 with DrbdFS2 INFINITY
+pcs -f instance2_cfg constraint colocation add MySQL2 with VirtIP2 INFINITY
+pcs -f instance2_cfg constraint order VirtIP2 then DrbdFS2
+pcs -f instance2_cfg constraint order DrbdFS2 then MySQL2
+pcs -f instance2_cfg constraint order VirtIP2 then MySQL2
+pcs cluster cib-push instance2_cfg
+
+
+mysql -S /data/instance1/mysql/mysql.sock --execute="CREATE USER 'root'@'172.16.2.0/255.255.255.0';"
+mysql -S /data/instance1/mysql/mysql.sock --execute="GRANT ALL PRIVILEGES ON *.* TO 'root'@'172.16.2.0/255.255.255.0' WITH GRANT OPTION;"
+mysql -S /data/instance1/mysql/mysql.sock --execute="GRANT PROXY ON ''@'' TO 'root'@'172.16.2.0/255.255.255.0' WITH GRANT OPTION;"
+
+mysql -S /data/instance2/mysql/mysql.sock --execute="CREATE USER 'root'@'172.16.2.0/255.255.255.0';"
+mysql -S /data/instance2/mysql/mysql.sock --execute="GRANT ALL PRIVILEGES ON *.* TO 'root'@'172.16.2.0/255.255.255.0' WITH GRANT OPTION;"
+mysql -S /data/instance2/mysql/mysql.sock --execute="GRANT PROXY ON ''@'' TO 'root'@'172.16.2.0/255.255.255.0' WITH GRANT OPTION;"
 
 # on the other node run this
 drbdadm attach testdata1
+drbdadm attach testdata2
 
 drbd-overview (make sure it gets synced up)
