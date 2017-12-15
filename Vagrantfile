@@ -10,7 +10,8 @@ Vagrant.configure("2") do |config|
 
   (1..2).each do |i|
     config.vm.define "node#{i}" do |node|
-      file_to_disk =  File.join(VAGRANT_ROOT, "./node#{i}.vdi")
+      file_to_disk0 =  File.join(VAGRANT_ROOT, "./node#{i}-0.vdi")
+      file_to_disk1 =  File.join(VAGRANT_ROOT, "./node#{i}-1.vdi")
 
       node.vm.box = "centos/7"
       node.vm.hostname = "node#{i}"
@@ -19,10 +20,14 @@ Vagrant.configure("2") do |config|
       node.vm.provider "virtualbox" do |vb|
         vb.memory = "1024"
 
-        unless File.exist?(file_to_disk)
-          vb.customize ['createhd', '--filename', file_to_disk, '--size', 20 * 1024]
+        unless File.exist?(file_to_disk0)
+          vb.customize ['createhd', '--filename', file_to_disk0, '--size', 20 * 1024]
         end
-        vb.customize ['storageattach', :id, '--storagectl', 'IDE', '--port', 1, '--device', 0, '--type', 'hdd', '--medium', file_to_disk]
+        unless File.exist?(file_to_disk1)
+          vb.customize ['createhd', '--filename', file_to_disk1, '--size', 20 * 1024]
+        end
+        vb.customize ['storageattach', :id, '--storagectl', 'IDE', '--port', 1, '--device', 0, '--type', 'hdd', '--medium', file_to_disk0]
+        vb.customize ['storageattach', :id, '--storagectl', 'IDE', '--port', 1, '--device', 1, '--type', 'hdd', '--medium', file_to_disk1]
       end
 
       node.vm.provision "shell", inline: <<-SHELL
@@ -80,19 +85,12 @@ Vagrant.configure("2") do |config|
   end
 
   config.vm.define "node3" do |node|
-    file_to_disk =  File.join(VAGRANT_ROOT, "./node3.vdi")
-
     node.vm.box = "centos/7"
     node.vm.hostname = "node3"
     node.vm.network "private_network", ip: "172.16.2.63"
 
     node.vm.provider "virtualbox" do |vb|
       vb.memory = "1024"
-
-      unless File.exist?(file_to_disk)
-        vb.customize ['createhd', '--filename', file_to_disk, '--size', 20 * 1024]
-      end
-      vb.customize ['storageattach', :id, '--storagectl', 'IDE', '--port', 1, '--device', 0, '--type', 'hdd', '--medium', file_to_disk]
     end
 
     node.vm.provision "shell", inline: <<-SHELL
