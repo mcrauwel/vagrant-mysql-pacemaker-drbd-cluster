@@ -58,7 +58,7 @@ Vagrant.configure("2") do |config|
         systemctl start drbd
         systemctl enable drbd
 
-        yum install -y pacemaker pcs fence-agents-all psmisc policycoreutils-python
+        yum install -y pacemaker pcs fence-agents-all psmisc policycoreutils-python corosync-qdevice
 
         echo "redhat" | passwd --stdin hacluster
         systemctl start pcsd
@@ -104,18 +104,13 @@ Vagrant.configure("2") do |config|
 172.16.2.42 virtip2
       " > /etc/hosts
 
-      yum install -y pacemaker pcs fence-agents-all psmisc policycoreutils-python
-
-      echo "redhat" | passwd --stdin hacluster
-      systemctl start pcsd
-      systemctl enable pcsd
-
-      systemctl enable corosync.service
-      systemctl enable pacemaker.service
-
       sed -i s/SELINUX=enforcing/SELINUX=disabled/g /etc/selinux/config
       semanage permissive -a drbd_t
       setenforce 0
+
+      sudo yum install -y corosync-qnetd
+
+      sudo pcs qdevice setup model net --enable --start
     SHELL
 
 

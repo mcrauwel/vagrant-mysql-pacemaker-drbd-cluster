@@ -1,11 +1,12 @@
 # Run these commands on one node only...
 
-pcs cluster auth node1 node2 -u hacluster -p redhat
+pcs cluster auth node1 node2 node3 -u hacluster -p redhat
 pcs cluster setup --name mycluster node1 node2
 pcs cluster start --all
 pcs cluster enable --all
 
 pcs property set stonith-enabled=false
+pcs quorum device add model net host=node3 algorithm=ffsplit
 
 pcs cluster cib drbd1_cfg
 pcs -f drbd1_cfg resource create DrbdData1 ocf:linbit:drbd drbd_resource=testdata1 op monitor interval=60s
