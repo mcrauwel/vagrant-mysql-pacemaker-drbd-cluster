@@ -26,8 +26,8 @@ pcs cluster cib resource_cfg
 pcs -f resource_cfg resource create filesystem_1 Filesystem device="/dev/drbd0" directory="/mnt" fstype="ext3"
 pcs -f resource_cfg resource create virtual_ip_1 ocf:heartbeat:IPaddr2 ip="172.16.2.41" cidr_netmask=32 nic="eth1:1" op monitor interval=30s
 pcs -f resource_cfg resource create mysql_1 systemd:mysqld op monitor interval=10s
-pcs -f resource_cfg constraint colocation add DrbdFS with DrbdData INFINITY with-rsc-role=Master
-pcs -f resource_cfg constraint order promote DrbdData then start DrbdFS
+pcs -f resource_cfg constraint colocation add filesystem_1 with DrbdData INFINITY with-rsc-role=Master
+pcs -f resource_cfg constraint order promote DrbdData then start filesystem_1
 pcs -f resource_cfg resource group add database_a filesystem_1 virtual_ip_1 mysql_1
 pcs cluster cib-push resource_cfg
 
