@@ -86,6 +86,9 @@ Vagrant.configure("2") do |config|
     node.vm.provision "shell", inline: <<-SHELL
       echo "hello from node 3"
 
+      rpm -ivh http://www.elrepo.org/elrepo-release-7.0-2.el7.elrepo.noarch.rpm
+      rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-elrepo.org
+
       echo "
 172.16.2.61 node1
 172.16.2.62 node2
@@ -94,12 +97,17 @@ Vagrant.configure("2") do |config|
       " > /etc/hosts
 
       sed -i s/SELINUX=enforcing/SELINUX=disabled/g /etc/selinux/config
-      semanage permissive -a drbd_t
       setenforce 0
 
-      sudo yum install -y corosync-qnetd
+      yum install -y pacemaker pcs fence-agents-all psmisc policycoreutils-python corosync-qdevice drbd84-utils
 
-      sudo pcs qdevice setup model net --enable --start
+      echo "redhat" | passwd --stdin hacluster
+      systemctl start pcsd
+      systemctl enable pcsd
+
+      systemctl enable corosync.service
+      systemctl enable pacemaker.service
+
     SHELL
 
 
